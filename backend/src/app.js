@@ -3,6 +3,7 @@ import "dotenv/config"
 import cors from "cors";
 import { pool } from './config/db.js';
 import authRouter from './routes/auth.js';
+import groupRouter from './routes/groups.js';
 
 const app = express();
 
@@ -26,7 +27,8 @@ app.get("/api/health", async (req,res)=>{
     }
 })
 
-app.use('/api/auth' , authRouter)
+app.use('/api/auth' , authRouter);
+app.use("/api/group" , groupRouter);
 
 app.listen(process.env.PORT, ()=>{
     console.log("Server started at the port " + process.env.PORT);
