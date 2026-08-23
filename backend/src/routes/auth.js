@@ -4,6 +4,8 @@ import "dotenv/config";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {pool} from "../config/db.js";
+import { authMiddleware } from '../middlewares/authentication.js';
+import { checkAuthorization } from '../middlewares/roleAuthorization.js';
 
 router.post("/register" , async(req,res)=>{
     try{
@@ -96,5 +98,14 @@ router.post("/login" , async (req, res)=>{
         })
     }
 })
+
+router.use(authMiddleware);
+
+router.get("/me", checkAuthorization("STUDENT"), async (req, res) => {
+    res.json({
+        message: "You are authenticated",
+        user: req.user
+    });
+});
 
 export default router;
