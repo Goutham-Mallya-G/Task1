@@ -108,4 +108,47 @@ router.get("/me", checkAuthorization("STUDENT"), async (req, res) => {
     });
 });
 
+router.post("/register/admin", checkAuthorization("ADMIN"), async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                message: "Name, email and password are required"
+            });
+        }
+
+        const existingUser = await pool.query(
+            `select id from users where email = $1`,
+            [email]
+        );
+
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({
+                message: "Email already exists"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const result = await pool.query(
+            `insert into users (name, email, password, role)
+             values ($1, $2, $3, 'ADMIN')
+             returning id, name, email, role, created_at`,
+            [name.trim(), email.trim(), hashedPassword]
+        );
+
+        return res.status(201).json({
+            message: "Admin created successfully",
+            admin: result.rows[0]
+        });
+
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({
+            message: "Failed to create admin"
+        });
+    }
+});
+
 export default router;
