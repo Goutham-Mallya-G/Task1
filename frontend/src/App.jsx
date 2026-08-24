@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './routes/ProtectedRoute'
 import RoleRoute from './routes/RoleRoute'
 import StudentLayout from './components/layout/StudentLayout'
+import AdminLayout from './components/layout/AdminLayout'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -18,6 +19,7 @@ import CreateAssignment from './pages/admin/CreateAssignment'
 import AssignmentProgress from './pages/admin/AssignmentProgress'
 import Submissions from './pages/admin/Submissions'
 import AdminRegistration from './pages/admin/AdminRegistration'
+import AdminAssignments from './pages/admin/AdminAssignments'
 
 function App() {
   return (
@@ -40,11 +42,14 @@ function App() {
           </Route>
 
           <Route element={<RoleRoute role="ADMIN" />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/assignments/create" element={<CreateAssignment />} />
-            <Route path="/admin/assignments/:id/progress" element={<AssignmentProgress />} />
-            <Route path="/admin/assignments/:id/submissions" element={<Submissions />} />
-            <Route path="/admin/admins/create" element={<AdminRegistration />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/assignments" element={<AdminAssignments />} />
+              <Route path="/admin/assignments/create" element={<CreateAssignment />} />
+              <Route path="/admin/assignments/:id/progress" element={<AssignmentProgress />} />
+              <Route path="/admin/assignments/:id/submissions" element={<Submissions />} />
+              <Route path="/admin/admins/create" element={<AdminRegistration />} />
+            </Route>
           </Route>
         </Route>
         
