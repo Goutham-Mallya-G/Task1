@@ -5,6 +5,7 @@ import {useAuth} from '../../hooks/useAuth'
 const links = [
   {to: '/admin/dashboard', label: 'Dashboard'},
   {to: '/admin/assignments', label: 'Assignments'},
+  {to: '/admin/groups', label: 'Groups'},
   {to: '/admin/assignments/create', label: 'Create assignment'},
   {to: '/admin/admins/create', label: 'Add admin'},
 ]
@@ -23,7 +24,7 @@ function AdminLayout() {
         <header className="border-b border-slate-200 bg-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
                 <span className="text-xl font-bold">
-                    Joineazy
+                    Assignment Portal
                 </span>
                 <button className="rounded border border-slate-300 px-3 py-2 text-sm md:hidden" onClick={() => setMenuOpen(!menuOpen)} type="button">
                     Menu
@@ -41,7 +42,7 @@ function AdminLayout() {
                 <div className="mx-auto flex max-w-7xl flex-col gap-1 md:flex-row md:gap-6">
                     {
                     links.map((link) => (
-                        <NavLink key={link.to} className={({ isActive }) => `rounded px-2 py-2 text-sm font-medium ${isActive ?
+                        <NavLink end={link.to === '/admin/assignments'} key={link.to} className={({ isActive }) => `rounded px-2 py-2 text-sm font-medium ${isActive ?
                             'bg-blue-50 text-blue-700' :
                             'text-slate-600 hover:text-slate-900'}`}
                              onClick={() => setMenuOpen(false)} to={link.to}>{link.label}

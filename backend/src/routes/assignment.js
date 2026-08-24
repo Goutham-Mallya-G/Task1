@@ -25,6 +25,13 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             });
         }
 
+        const parsedDueDate = new Date(dueDate);
+        if (Number.isNaN(parsedDueDate.getTime()) || parsedDueDate.getTime() < Date.now() + 60 * 60 * 1000) {
+            return res.status(400).json({
+                message: "Due date must be at least 1 hour from now"
+            });
+        }
+
         if(!onedriveUrl || !onedriveUrl.trim()){
             return res.status(400).json({
                 message: "OneDrive URL is required"
@@ -37,9 +44,15 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             });
         }
 
-        if(targetType === "GROUP" && (!Array.isArray(groupIds) || groupIds.length === 0)){
+        if (targetType === "GROUP" && (!Array.isArray(groupIds) || groupIds.length === 0)){
             return res.status(400).json({
                 message: "At least one group is required"
+            });
+        }
+
+        if (targetType === "GROUP" && groupIds.some((groupId) => !Number.isInteger(Number(groupId)))) {
+            return res.status(400).json({
+                message: "Group IDs must be valid numbers"
             });
         }
 
@@ -48,7 +61,7 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
         if (targetType === "GROUP") {
             const groupResult = await client.query(
                 `select id from groups
-                 where id = $1`,
+                 where id = any($1::bigint[])`,
                 [groupIds]
             );
 
@@ -128,7 +141,7 @@ router.get("/", checkAuthorization("STUDENT"), async (req, res) => {
 );
 
 router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
-        const client = pool.connect();
+    const client = await pool.connect();
         try {
             const assignmentId = req.params.id;
             const studentId = req.user.id;

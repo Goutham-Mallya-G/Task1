@@ -4,7 +4,7 @@ import { getAssignments, getAssignmentStatus } from '../../api/assignmentApi'
 import AssignmentStatusBadge from '../../components/student/AssignmentStatusBadge'
 
 const formatDate = (date) => {
-    new Date(date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    return new Date(date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function Assignments() {

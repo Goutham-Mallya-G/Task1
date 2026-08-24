@@ -41,7 +41,7 @@ function StudentDashboard() {
         Student dashboard
       </h1>
         <p className="mt-1 text-slate-600">
-          Here is your current Joineazy overview.
+            Here is your current assignment overview.
         </p>
     </div>
     {

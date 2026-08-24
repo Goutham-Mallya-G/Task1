@@ -48,7 +48,7 @@ function Login(){
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-5 rounded-lg bg-white p-8 shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Log in to Joineazy</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Log in to your assignment portal</h1>
           <p className="mt-2 text-slate-600">Manage your groups and assignments.</p>
         </div>
         {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}

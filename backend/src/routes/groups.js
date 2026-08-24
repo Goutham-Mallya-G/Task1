@@ -6,7 +6,14 @@ import { checkAuthorization } from '../middlewares/roleAuthorization.js';
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(checkAuthorization("STUDENT"));
+router.use((req, res, next) => {
+    if (!['STUDENT', 'ADMIN'].includes(req.user.role)) {
+        return res.status(403).json({
+            message: "Access denied"
+        });
+    }
+    next();
+});
 
 router.post("/", checkAuthorization("STUDENT") , async(req,res)=>{
     const client = await pool.connect();
@@ -56,14 +63,24 @@ router.post("/", checkAuthorization("STUDENT") , async(req,res)=>{
     }
 })
 
-router.get("/", checkAuthorization("STUDENT") , async(req,res)=>{
+router.get("/", async(req,res)=>{
     try{
         const result = await pool.query(
-            `select g.id, g.name, g.created_by , g.created_at from groups g
-            join group_members gm on g.id = gm.group_id
-            where gm.student_id = $1
+            `select g.id, g.name, g.created_by, g.created_at,
+            coalesce(json_agg(
+                json_build_object('id', u.id, 'name', u.name, 'email', u.email)
+                order by u.name
+            ) filter (where u.id is not null), '[]') as members
+            from groups g
+            left join group_members all_gm on g.id = all_gm.group_id
+            left join users u on all_gm.student_id = u.id
+            where ($1 = 'ADMIN' or exists (
+                select 1 from group_members student_gm
+                where student_gm.group_id = g.id and student_gm.student_id = $2
+            ))
+            group by g.id, g.name, g.created_by, g.created_at
             order by g.created_at desc`,
-            [req.user.id]
+            [req.user.role, req.user.id]
         )
 
         return res.status(200).json({
@@ -171,7 +188,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
     }
 })
 
-router.get("/:id/members", checkAuthorization("STUDENT") , async(req,res) =>{
+router.get("/:id/members", async(req,res) =>{
     const client = await pool.connect();
     try{
         const {id} = req.params;
@@ -201,7 +218,7 @@ router.get("/:id/members", checkAuthorization("STUDENT") , async(req,res) =>{
             member => member.id === req.user.id
         )
 
-        if(!isMember){
+        if(req.user.role !== 'ADMIN' && !isMember){
             return res.status(403).json({
                 message: "You are not a member of this group"
             });

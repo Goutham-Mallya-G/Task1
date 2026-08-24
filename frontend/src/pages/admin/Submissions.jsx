@@ -39,7 +39,7 @@ function Submissions() {
         Submissions
       </h1>
       <p className="mt-1 text-slate-600">
-        Confirmed submissions returned by the backend.
+        Confirmed submissions.
       </p>
     </div>
     {

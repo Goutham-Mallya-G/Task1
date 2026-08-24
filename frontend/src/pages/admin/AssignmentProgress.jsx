@@ -45,7 +45,7 @@ function AssignmentProgress() {
         Assignment progress
       </h1>
       <p className="mt-1 text-slate-600">
-        Aggregate progress returned by the backend.
+        Aggregate progress.
       </p>
     </div>
     <div className="grid gap-4 sm:grid-cols-3">

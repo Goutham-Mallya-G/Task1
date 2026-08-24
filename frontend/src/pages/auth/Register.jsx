@@ -50,7 +50,7 @@ function Register(){
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-5 rounded-lg bg-white p-8 shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Create your account</h1>
-          <p className="mt-2 text-slate-600">Join your classmates on Joineazy.</p>
+          <p className="mt-2 text-slate-600">Join your classmates in the assignment portal.</p>
         </div>
         {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
         <label className="block text-sm font-medium text-slate-700">Name<input className="mt-1 w-full rounded border border-slate-300 p-2" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />{fieldErrors.name && <span className="text-sm text-red-600">{fieldErrors.name[0]}</span>}</label>

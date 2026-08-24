@@ -20,6 +20,8 @@ import AssignmentProgress from './pages/admin/AssignmentProgress'
 import Submissions from './pages/admin/Submissions'
 import AdminRegistration from './pages/admin/AdminRegistration'
 import AdminAssignments from './pages/admin/AdminAssignments'
+import AdminGroups from './pages/admin/AdminGroups'
+import AdminGroupDetails from './pages/admin/AdminGroupDetails'
 
 function App() {
   return (
@@ -45,6 +47,8 @@ function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/assignments" element={<AdminAssignments />} />
+              <Route path="/admin/groups" element={<AdminGroups />} />
+              <Route path="/admin/groups/:id" element={<AdminGroupDetails />} />
               <Route path="/admin/assignments/create" element={<CreateAssignment />} />
               <Route path="/admin/assignments/:id/progress" element={<AssignmentProgress />} />
               <Route path="/admin/assignments/:id/submissions" element={<Submissions />} />
