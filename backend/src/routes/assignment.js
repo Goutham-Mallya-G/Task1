@@ -16,6 +16,7 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             return res.status(400).json({
                 message: "Assignment title is required"
             });
+
         }
 
         if(!dueDate){
