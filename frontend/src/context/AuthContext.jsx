@@ -12,10 +12,16 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem('token', token)
 
-    const meResponse = await getMe()
-    const authenticatedUser = meResponse.data.user
-    setUser(authenticatedUser)
-    return authenticatedUser
+    try {
+      const meResponse = await getMe()
+      const authenticatedUser = meResponse.data.user
+      setUser(authenticatedUser)
+      return authenticatedUser
+    }catch (error){
+      localStorage.removeItem('token')
+      setUser(null)
+      throw error
+    }
   }
 
   const logout = () => {

@@ -101,7 +101,7 @@ router.post("/login" , async (req, res)=>{
 
 router.use(authMiddleware);
 
-router.get("/me", checkAuthorization("STUDENT"), async (req, res) => {
+router.get("/me", async (req, res) => {
     res.json({
         message: "You are authenticated",
         user: req.user

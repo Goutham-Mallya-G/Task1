@@ -2,11 +2,20 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 function RoleRoute({ role }) {
-  const { user } = useAuth()
+  const{ user, loading } = useAuth()
+  const allowedRoles = Array.isArray(role) ? role : [role]
 
-  return user?.role === role
+  if(loading){
+    return <p className="p-6">Loading...</p>
+  }
+
+  if(!user){
+    return <Navigate to="/login" replace />
+  }
+
+  return allowedRoles.includes(user.role)
     ? <Outlet />
-    : <Navigate to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/student/dashboard'} replace />
+    : <Navigate to={user.role === 'ADMIN' ? '/admin/dashboard' : '/student/dashboard'} replace />
 }
 
 export default RoleRoute

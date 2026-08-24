@@ -5,8 +5,18 @@ function ProtectedRoute(){
   const { user, loading } = useAuth()
 
   if(loading){
-    return <p className="p-6">Loading...</p>
+    return (
+        <p className="p-6">
+            Loading...
+        </p>
+    )
   }
+  if(!user){
+    return (
+        <Navigate to="/login" replace />
+    )
+  }
+
   return user ? <Outlet /> : <Navigate to="/login" replace />
 }
 

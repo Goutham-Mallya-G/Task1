@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './routes/ProtectedRoute'
 import RoleRoute from './routes/RoleRoute'
+import StudentLayout from './components/layout/StudentLayout'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -28,12 +29,14 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute role="STUDENT" />}>
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/groups" element={<Groups />} />
-            <Route path="/student/groups/create" element={<CreateGroup />} />
-            <Route path="/student/groups/:id" element={<GroupDetails />} />
-            <Route path="/student/assignments" element={<Assignments />} />
-            <Route path="/student/assignments/:id" element={<AssignmentDetails />} />
+            <Route element={<StudentLayout />}>
+              <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/groups" element={<Groups />} />
+              <Route path="/student/groups/create" element={<CreateGroup />} />
+              <Route path="/student/groups/:id" element={<GroupDetails />} />
+              <Route path="/student/assignments" element={<Assignments />} />
+              <Route path="/student/assignments/:id" element={<AssignmentDetails />} />
+            </Route>
           </Route>
 
           <Route element={<RoleRoute role="ADMIN" />}>
