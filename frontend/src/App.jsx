@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from './routes/ProtectedRoute'
 import RoleRoute from './routes/RoleRoute'
 import StudentLayout from './components/layout/StudentLayout'
 import AdminLayout from './components/layout/AdminLayout'
+import { useAuth } from './hooks/useAuth'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -23,11 +24,27 @@ import AdminAssignments from './pages/admin/AdminAssignments'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminGroupDetails from './pages/admin/AdminGroupDetails'
 
+function RootRedirect() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <p className="p-6">Loading...</p>
+  }
+
+  return (
+    <Navigate
+      to={user ? (user.role === 'ADMIN' ? '/admin/dashboard' : '/student/dashboard') : '/login'}
+      replace
+    />
+  )
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
 
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
