@@ -6,6 +6,7 @@ const links = [
   {to: '/admin/dashboard', label: 'Dashboard'},
   {to: '/admin/assignments', label: 'Assignments'},
   {to: '/admin/groups', label: 'Groups'},
+    {to: '/admin/courses', label: 'Courses'},
   {to: '/admin/assignments/create', label: 'Create assignment'},
   {to: '/admin/admins/create', label: 'Add admin'},
 ]

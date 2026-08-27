@@ -79,6 +79,9 @@ function AdminAssignments() {
                                     <Link className="text-blue-600" to={`/admin/assignments/${assignment.id}/submissions`}>
                                         Submissions
                                     </Link>
+                                    <Link className="ml-4 text-blue-600" to={`/admin/assignments/${assignment.id}/edit`}>
+                                        Edit
+                                    </Link>
                                 </div>
                             </article>)}
                     </div>
@@ -116,6 +119,9 @@ function AdminAssignments() {
                                         </Link>
                                         <Link className="text-blue-600" to={`/admin/assignments/${assignment.id}/submissions`}>
                                             Submissions
+                                        </Link>
+                                        <Link className="ml-4 text-blue-600" to={`/admin/assignments/${assignment.id}/edit`}>
+                                            Edit
                                         </Link>
                                     </td>
                                 </tr>)}

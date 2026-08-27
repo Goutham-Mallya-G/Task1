@@ -1,6 +1,6 @@
 create type user_role as enum ('STUDENT', 'ADMIN');
 
-create type assignment_target_type as enum ('ALL', 'GROUP');
+create type assignment_target_type as enum ('ALL', 'GROUP', 'COURSE');
 
 
 create table users (
@@ -14,12 +14,39 @@ create table users (
 );
 
 
+create table courses (
+    id bigserial primary key,
+    name varchar(150) not null,
+    created_by bigint not null references users(id),
+    created_at timestamp default current_timestamp,
+    updated_at timestamp default current_timestamp
+);
+
+
+create table course_students (
+    course_id bigint references courses(id) on delete cascade,
+    student_id bigint references users(id) on delete cascade,
+    enrolled_at timestamp default current_timestamp,
+
+    primary key (course_id, student_id)
+);
+
 create table groups (
     id bigserial primary key,
     name varchar(100) not null,
     created_by bigint not null references users(id),
+    leader_id bigint not null references users(id),
     created_at timestamp default current_timestamp,
     updated_at timestamp default current_timestamp
+);
+
+
+create table course_groups (
+    course_id bigint references courses(id) on delete cascade,
+    group_id bigint references groups(id) on delete cascade,
+    enrolled_at timestamp default current_timestamp,
+
+    primary key (course_id, group_id)
 );
 
 
@@ -40,9 +67,14 @@ create table assignments (
     onedrive_url text not null,
     target_type assignment_target_type not null,
     created_by bigint not null references users(id),
+    course_id bigint references courses(id) on delete cascade,
     created_at timestamp default current_timestamp,
     updated_at timestamp default current_timestamp
 );
+
+alter table assignments add constraint assignments_target_course_check
+    check ((target_type = 'COURSE' and course_id is not null)
+        or (target_type <> 'COURSE'));
 
 
 create table assignment_groups (

@@ -28,9 +28,9 @@ router.post("/", checkAuthorization("STUDENT") , async(req,res)=>{
         await client.query("Begin");
         
         const groupResult = await client.query(
-            `insert into groups (name, created_by)
-            values ($1, $2)
-            returning id, name, created_by`,
+            `insert into groups (name, created_by, leader_id)
+            values ($1, $2, $2)
+            returning id, name, created_by, leader_id`,
             [name.trim() , req.user.id]
         );
 
@@ -109,7 +109,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
 
         //check if group exits
         const groupResult = await client.query(
-            `select name, created_by from groups
+            `select name, created_by, leader_id from groups
             where id = $1`,
             [id]
         );
@@ -123,7 +123,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
         const group = groupResult.rows[0];
 
         //check is group creator adding student
-        if(group.created_by !== req.user.id){
+        if(Number(group.leader_id) !== Number(req.user.id)){
             return res.status(403).json({
                 message : "Only group creator can add studnet in groups"
             })
@@ -188,12 +188,43 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
     }
 })
 
+router.delete('/:id/members/:studentId', checkAuthorization('STUDENT'), async (req, res) => {
+    try {
+        const groupResult = await pool.query(
+            `select leader_id from groups where id = $1`,
+            [req.params.id]
+        );
+        if (groupResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+        if (Number(groupResult.rows[0].leader_id) !== Number(req.user.id)) {
+            return res.status(403).json({ message: 'Only the group leader can remove students' });
+        }
+        if (Number(req.params.studentId) === Number(req.user.id)) {
+            return res.status(400).json({ message: 'The group leader cannot be removed' });
+        }
+
+        const result = await pool.query(
+            `delete from group_members where group_id = $1 and student_id = $2
+             returning group_id, student_id`,
+            [req.params.id, req.params.studentId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Student is not a member of this group' });
+        }
+        return res.json({ message: 'Student removed from the group', membership: result.rows[0] });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Failed to remove student from group' });
+    }
+});
+
 router.get("/:id/members", async(req,res) =>{
     const client = await pool.connect();
     try{
         const {id} = req.params;
         const groupResult = await client.query(
-            `select id, name, created_by from groups
+            `select id, name, created_by, leader_id from groups
             where id = $1`,
             [id]
         );
@@ -215,7 +246,7 @@ router.get("/:id/members", async(req,res) =>{
         )
 
         const isMember = membersResult.rows.some(
-            member => member.id === req.user.id
+            member => Number(member.id) === Number(req.user.id)
         )
 
         if(req.user.role !== 'ADMIN' && !isMember){

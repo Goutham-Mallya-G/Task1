@@ -10,7 +10,7 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
     const client = await pool.connect();
 
     try {
-        const { title, description, dueDate, onedriveUrl, targetType, groupIds } = req.body;
+        const { title, description, dueDate, onedriveUrl, targetType, groupIds, courseId } = req.body;
 
         if(!title || !title.trim()){
             return res.status(400).json({
@@ -38,9 +38,9 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             });
         }
 
-        if(!["ALL", "GROUP"].includes(targetType)){
+        if(!["ALL", "GROUP", "COURSE"].includes(targetType)){
             return res.status(400).json({
-                message: "Target type must be ALL or GROUP"
+                message: "Target type must be ALL, GROUP, or COURSE"
             });
         }
 
@@ -54,6 +54,10 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             return res.status(400).json({
                 message: "Group IDs must be valid numbers"
             });
+        }
+
+        if (targetType === "COURSE" && !Number.isInteger(Number(courseId))) {
+            return res.status(400).json({ message: "A valid course ID is required" });
         }
 
         await client.query("begin");
@@ -74,12 +78,20 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
             }
         }
 
+        if (targetType === "COURSE") {
+            const courseResult = await client.query(`select id from courses where id = $1`, [courseId]);
+            if (courseResult.rows.length === 0) {
+                await client.query("rollback");
+                return res.status(404).json({ message: "Course not found" });
+            }
+        }
+
 
         const assignmentResult = await client.query(
-            `insert into assignments (title, description, due_date, onedrive_url, target_type, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id, title, description, due_date, onedrive_url, target_type, created_by, created_at`,
-            [title.trim(), description || null, dueDate, onedriveUrl.trim(), targetType, req.user.id]
+            `insert into assignments (title, description, due_date, onedrive_url, target_type, created_by, course_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id, title, description, due_date, onedrive_url, target_type, course_id, created_by, created_at`,
+            [title.trim(), description || null, dueDate, onedriveUrl.trim(), targetType, req.user.id, courseId || null]
         );
 
         const assignment = assignmentResult.rows[0];
@@ -120,8 +132,13 @@ router.get("/", checkAuthorization("STUDENT"), async (req, res) => {
             const result = await pool.query(
                 `select distinct a.id, a.title, a.description, a.due_date, a.onedrive_url, a.target_type, a.created_at from assignments a
                  left join assignment_groups ag on a.id = ag.assignment_id
-                 left join group_members gm on ag.group_id = gm.group_id
-                 where a.target_type = 'ALL' or gm.student_id = $1
+                      left join group_members gm on ag.group_id = gm.group_id
+                 left join course_students cs on cs.course_id = a.course_id and cs.student_id = $1
+                 left join course_groups cg on cg.course_id = a.course_id
+                 left join group_members course_gm on course_gm.group_id = cg.group_id and course_gm.student_id = $1
+                      where a.target_type = 'ALL'
+                          or (a.target_type = 'GROUP' and gm.student_id = $1)
+                        or (a.target_type = 'COURSE' and (cs.student_id is not null or course_gm.student_id is not null))
                  order by a.due_date ASC`,
                 [req.user.id]
             );
@@ -161,8 +178,13 @@ router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
             const accessResult = await client.query(
                 `select 1 from assignments a
                  left join assignment_groups ag on a.id = ag.assignment_id
-                 left join group_members gm on ag.group_id = gm.group_id
-                 where a.id = $1 and ( a.target_type = 'ALL' or gm.student_id = $2)
+                      left join group_members gm on ag.group_id = gm.group_id
+                      left join course_students cs on cs.course_id = a.course_id and cs.student_id = $2
+                      left join course_groups cg on cg.course_id = a.course_id
+                      left join group_members course_gm on course_gm.group_id = cg.group_id and course_gm.student_id = $2
+                      where a.id = $1 and (a.target_type = 'ALL'
+                          or (a.target_type = 'GROUP' and gm.student_id = $2)
+                          or (a.target_type = 'COURSE' and (cs.student_id is not null or course_gm.student_id is not null)))
                  limit 1`,
                 [assignmentId, studentId]
             );
@@ -345,7 +367,7 @@ router.get("/:id/submissions", checkAuthorization("ADMIN"), async (req, res) => 
 router.get("/admin", checkAuthorization("ADMIN"), async (req, res) => {
         try {
             const result = await pool.query(
-                `select id, title, description, due_date, onedrive_url, target_type, created_at from assignments
+                `select id, title, description, due_date, onedrive_url, target_type, course_id, created_at from assignments
                  where created_by = $1
                  order by created_at desc`,
                 [req.user.id]
@@ -364,5 +386,98 @@ router.get("/admin", checkAuthorization("ADMIN"), async (req, res) => {
         }
     }
 );
+
+router.get("/:id", checkAuthorization("ADMIN"), async (req, res) => {
+    try {
+        const result = await pool.query(
+            `select a.id, a.title, a.description, a.due_date, a.onedrive_url,
+                    a.target_type, a.course_id, a.created_by,
+                    coalesce(array_agg(ag.group_id) filter (where ag.group_id is not null), '{}') as group_ids
+             from assignments a
+             left join assignment_groups ag on ag.assignment_id = a.id
+             where a.id = $1 and a.created_by = $2
+             group by a.id`,
+            [req.params.id, req.user.id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
+        return res.json({ assignment: result.rows[0] });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Failed to fetch assignment' });
+    }
+});
+
+router.put("/:id", checkAuthorization("ADMIN"), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { title, description, dueDate, onedriveUrl, targetType, groupIds, courseId } = req.body;
+        if (!title?.trim() || !dueDate || !onedriveUrl?.trim()) {
+            return res.status(400).json({ message: 'Title, due date, and OneDrive URL are required' });
+        }
+        const parsedDueDate = new Date(dueDate);
+        if (Number.isNaN(parsedDueDate.getTime()) || parsedDueDate.getTime() < Date.now() + 60 * 60 * 1000) {
+            return res.status(400).json({ message: 'Due date must be at least 1 hour from now' });
+        }
+        if (!['ALL', 'GROUP', 'COURSE'].includes(targetType)) {
+            return res.status(400).json({ message: 'Target type must be ALL, GROUP, or COURSE' });
+        }
+        if (targetType === 'GROUP' && (!Array.isArray(groupIds) || groupIds.length === 0)) {
+            return res.status(400).json({ message: 'At least one group is required' });
+        }
+        if (targetType === 'COURSE' && !Number.isInteger(Number(courseId))) {
+            return res.status(400).json({ message: 'A valid course ID is required' });
+        }
+
+        await client.query('begin');
+        const ownership = await client.query(
+            'select id from assignments where id = $1 and created_by = $2',
+            [req.params.id, req.user.id]
+        );
+        if (ownership.rows.length === 0) {
+            await client.query('rollback');
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
+        if (targetType === 'GROUP') {
+            const groups = await client.query('select id from groups where id = any($1::bigint[])', [groupIds]);
+            if (groups.rows.length !== groupIds.length) {
+                await client.query('rollback');
+                return res.status(404).json({ message: 'One or more groups not found' });
+            }
+        }
+        if (targetType === 'COURSE') {
+            const course = await client.query('select id from courses where id = $1', [courseId]);
+            if (course.rows.length === 0) {
+                await client.query('rollback');
+                return res.status(404).json({ message: 'Course not found' });
+            }
+        }
+        const updated = await client.query(
+            `update assignments
+             set title = $1, description = $2, due_date = $3, onedrive_url = $4,
+                 target_type = $5, course_id = $6, updated_at = current_timestamp
+             where id = $7
+             returning id, title, description, due_date, onedrive_url, target_type, course_id, created_by, updated_at`,
+            [title.trim(), description || null, dueDate, onedriveUrl.trim(), targetType, courseId || null, req.params.id]
+        );
+        await client.query('delete from assignment_groups where assignment_id = $1', [req.params.id]);
+        if (targetType === 'GROUP') {
+            await client.query(
+                `insert into assignment_groups (assignment_id, group_id)
+                 select $1, unnest($2::bigint[])`,
+                [req.params.id, groupIds]
+            );
+        }
+        await client.query('commit');
+        return res.json({ message: 'Assignment updated successfully', assignment: updated.rows[0] });
+    } catch (error) {
+        await client.query('rollback');
+        console.log(error);
+        return res.status(500).json({ message: 'Failed to update assignment' });
+    } finally {
+        client.release();
+    }
+});
 
 export default router;

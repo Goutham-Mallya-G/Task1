@@ -5,6 +5,7 @@ import {useAuth} from '../../hooks/useAuth'
 const links = [
   {to:'/student/dashboard', label: 'Dashboard'},
   {to:'/student/groups', label: 'Groups'},
+  {to:'/student/courses', label: 'Courses'},
   {to:'/student/assignments', label: 'Assignments'},
 ]
 

@@ -3,14 +3,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { createAssignment } from '../../api/assignmentApi'
 import { getGroups } from '../../api/groupApi'
+import { getCourses } from '../../api/courseApi'
 
 const assignmentSchema = z.object({ 
   title: z.string().trim().min(1, 'Title is required'),
   description: z.string().optional(),
   dueDate: z.string().min(1, 'Due date is required'),
   onedriveUrl: z.string().url('Enter a valid OneDrive URL'),
-  targetType: z.enum(['ALL', 'GROUP']),
-  selectedGroupIds: z.array(z.union([z.string(), z.number()])).optional() }).superRefine((value, context) => {
+  targetType: z.enum(['ALL', 'GROUP', 'COURSE']),
+  selectedGroupIds: z.array(z.union([z.string(), z.number()])).optional(),
+  courseId: z.union([z.string(), z.number()]).optional() }).superRefine((value, context) => {
     const dueDate = new Date(value.dueDate)
     if(value.dueDate && (Number.isNaN(dueDate.getTime()) || dueDate.getTime() < Date.now() + 60 * 60 * 1000)){
       context.addIssue({
@@ -26,8 +28,11 @@ const assignmentSchema = z.object({
       path: ['selectedGroupIds'],
       message: 'Select at least one group.' 
       })
-  }})
-
+    }
+    if(value.targetType === 'COURSE' && !value.courseId){
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['courseId'], message: 'Select a course.' })
+    }
+  })
 function CreateAssignment() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -36,9 +41,11 @@ function CreateAssignment() {
     dueDate: '',
     onedriveUrl: '',
     targetType: 'ALL',
-    selectedGroupIds: []
+    selectedGroupIds: [],
+    courseId: ''
   });
   const [groups, setGroups] = useState([])
+  const [courses, setCourses] = useState([])
   const [groupsLoading, setGroupsLoading] = useState(false)
   const [groupsError, setGroupsError] = useState('')
   const [errors, setErrors] = useState({});
@@ -66,6 +73,7 @@ function CreateAssignment() {
         dueDate: new Date(form.dueDate).toISOString(),
         onedriveUrl: form.onedriveUrl.trim(),
         targetType: form.targetType, groupIds 
+        , courseId: form.targetType === 'COURSE' ? form.courseId : null
       });
     navigate('/admin/assignments') 
     }catch(requestError){
@@ -93,6 +101,12 @@ function CreateAssignment() {
     }
 
     loadGroups()
+  }, [form.targetType])
+
+  useEffect(() => {
+    if(form.targetType !== 'COURSE') return
+    getCourses().then((response) => setCourses(response.data.courses || []))
+      .catch(() => setGroupsError('We could not load courses.'))
   }, [form.targetType])
 
   const toggleGroup = (groupId) => {
@@ -166,8 +180,20 @@ function CreateAssignment() {
               Specific groups
             </span>
           </label>
+          <label>
+            <input checked={form.targetType === 'COURSE'} name="target" onChange={() => update('targetType', 'COURSE')} type="radio" />
+            <span className="ml-1">Course</span>
+          </label>
         </div>
       </fieldset>
+      {form.targetType === 'COURSE' && <label className="block text-sm font-medium">
+        Course
+        <select className="mt-1 w-full rounded border border-slate-300 p-2" value={form.courseId} onChange={(event) => update('courseId', event.target.value)}>
+          <option value="">Select a course</option>
+          {courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}
+        </select>
+        {errors.courseId && <span className="text-sm text-red-600">{errors.courseId[0]}</span>}
+      </label>}
       {
         form.targetType === 'GROUP' && 
         <div className="space-y-3">
