@@ -112,7 +112,7 @@ function AssignmentDetails(){
         </div>
         {
             status !== 'SUBMITTED' && !canSubmit && shared &&
-            <p className="mt-6 rounded bg-slate-100 p-3 text-slate-700">Only your group leader can acknowledge this assignment.</p>
+            <p className="mt-6 rounded bg-slate-100 p-3 text-slate-700">Only your group leader can submit this assignment.</p>
         }{
             confirming && 
             <div className="fixed inset-0 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">

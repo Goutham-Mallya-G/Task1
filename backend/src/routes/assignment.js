@@ -172,7 +172,7 @@ router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
             const studentId = req.user.id;
 
             const assignmentResult = await client.query(
-                `select id, target_type from assignments
+                `select id, target_type, course_id from assignments
                  where id = $1`,
                 [assignmentId]
             );
@@ -217,10 +217,29 @@ router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
 
                 if (leaderResult.rows.length === 0) {
                     return res.status(403).json({
-                        message: "Only the group leader can acknowledge this assignment"
+                        message: "Only the group leader can submit this assignment"
                     });
                 }
                 groupId = leaderResult.rows[0].group_id;
+            } else if (assignmentResult.rows[0].target_type === 'COURSE') {
+                const courseGroupResult = await client.query(
+                    `select cg.group_id, g.leader_id
+                     from course_groups cg
+                     join groups g on g.id = cg.group_id
+                     join group_members gm on gm.group_id = cg.group_id and gm.student_id = $2
+                     where cg.course_id = $1
+                     limit 1`,
+                    [assignmentResult.rows[0].course_id, studentId]
+                );
+
+                if (courseGroupResult.rows.length > 0 &&
+                    Number(courseGroupResult.rows[0].leader_id) !== Number(studentId)) {
+                    return res.status(403).json({
+                        message: "Only the group leader can submit this course assignment"
+                    });
+                }
+
+                groupId = courseGroupResult.rows[0]?.group_id || null;
             }
 
             const existingSubmission = await client.query(
@@ -286,12 +305,30 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
                             ))
                         )
                     ) as submitted,
-                    (a.target_type = 'GROUP' and exists (
+                    (a.target_type = 'ALL' or (a.target_type = 'GROUP' and exists (
                         select 1 from assignment_groups ag
                         join groups g on g.id = ag.group_id
                         join group_members gm on gm.group_id = g.id and gm.student_id = $2
                         where ag.assignment_id = a.id and g.leader_id = $2
-                    )) as can_submit
+                    )) or (a.target_type = 'COURSE' and exists (
+                        select 1 from course_groups cg
+                        join groups g on g.id = cg.group_id
+                        join group_members gm on gm.group_id = cg.group_id and gm.student_id = $2
+                        where cg.course_id = a.course_id and g.leader_id = $2
+                    )) or (a.target_type = 'COURSE' and exists (
+                        select 1 from course_students cs
+                        where cs.course_id = a.course_id and cs.student_id = $2
+                          and not exists (
+                              select 1 from course_groups grouped_course
+                              join group_members grouped_member on grouped_member.group_id = grouped_course.group_id
+                              where grouped_course.course_id = a.course_id and grouped_member.student_id = $2
+                          )
+                    )) as can_submit,
+                    (a.target_type = 'GROUP' or (a.target_type = 'COURSE' and exists (
+                        select 1 from course_groups cg
+                        join group_members gm on gm.group_id = cg.group_id and gm.student_id = $2
+                        where cg.course_id = a.course_id
+                    ))) as shared
                  from assignments a
                  where a.id = $1`,
                 [assignmentId, studentId]
@@ -318,8 +355,8 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
             return res.status(200).json({
                 assignmentId: assignment.id,
                 status,
-                canSubmit: assignment.target_type === 'GROUP' ? assignment.can_submit : true,
-                shared: assignment.target_type === 'GROUP'
+                canSubmit: assignment.can_submit,
+                shared: assignment.shared
             });
 
         } catch (e) {
