@@ -323,7 +323,7 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
                               join group_members grouped_member on grouped_member.group_id = grouped_course.group_id
                               where grouped_course.course_id = a.course_id and grouped_member.student_id = $2
                           )
-                    )) as can_submit,
+                    ))) as can_submit,
                     (a.target_type = 'GROUP' or (a.target_type = 'COURSE' and exists (
                         select 1 from course_groups cg
                         join group_members gm on gm.group_id = cg.group_id and gm.student_id = $2
