@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getAssignments, getAssignmentStatus } from '../../api/assignmentApi'
 import AssignmentStatusBadge from '../../components/student/AssignmentStatusBadge'
 
@@ -13,6 +13,8 @@ function Assignments() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+    const [searchParams] = useSearchParams()
+    const courseId = searchParams.get('courseId')
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -23,7 +25,9 @@ function Assignments() {
         const withStatuses = await Promise.all(items.map(async (assignment)=>{
             try{
                 const statusResponse = await getAssignmentStatus(assignment.id);
-                return { ...assignment, status: statusResponse.data.status } 
+                return { ...assignment, status: statusResponse.data.status,
+                                        canSubmit: statusResponse.data.canSubmit,
+                                        shared: statusResponse.data.shared }
             }catch{
                 return { ...assignment, status: 'UNKNOWN' }
             } 
@@ -40,13 +44,13 @@ function Assignments() {
     return ()=>clearTimeout(timer) 
   },[loadAssignments]);
 
-  const visibleAssignments = assignments.filter((assignment) => (filter === 'ALL' || assignment.status === filter) && assignment.title.toLowerCase().includes(search.toLowerCase()))
+    const visibleAssignments = assignments.filter((assignment) => (!courseId || String(assignment.course_id) === courseId) && (filter === 'ALL' || assignment.status === filter) && assignment.title.toLowerCase().includes(search.toLowerCase()))
 
   return (
   <section className="space-y-6">
     <div>
         <h1 className="text-2xl font-bold">
-            Assignments
+            {courseId ? 'Course assignments' : 'Assignments'}
         </h1>
         <p className="mt-1 text-slate-600">
             Track your deadlines and submissions.
@@ -94,6 +98,20 @@ function Assignments() {
                                 {assignment.description}
                             </p>
                         }
+                        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                            <span>
+                                <span className="font-medium text-slate-500">
+                                    Type : 
+                                </span> 
+                                {assignment.target_type}
+                            </span>
+                            <span>
+                                <span className="font-medium text-slate-500">
+                                    From : 
+                                </span> 
+                                {assignment.course_name || assignment.group_names || assignment.title}
+                            </span>
+                        </div>
                         <p className="mt-4 text-sm text-slate-500">
                             Due {formatDate(assignment.due_date)}
                         </p>

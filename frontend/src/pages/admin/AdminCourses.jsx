@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createCourse, getCourses } from '../../api/courseApi'
 
 function AdminCourses(){
@@ -87,12 +88,15 @@ function AdminCourses(){
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map((course) => 
                 <article className="rounded-lg bg-white p-5 shadow-sm" key={course.id}>
+                  <Link className="block" to={`/admin/courses/${course.id}`}>
                     <h2 className="text-lg font-semibold">
                         {course.name}
                     </h2>
                     <p className="mt-2 text-sm text-slate-500">
                         Course ID: {course.id}
                     </p>
+                    <span className="mt-4 block text-sm font-medium text-blue-600">View enrolled students and analytics</span>
+                    </Link>
                     <p className="mt-1 text-sm text-slate-500">
                         Created {new Date(course.created_at).toLocaleDateString('en-IN')}
                     </p>

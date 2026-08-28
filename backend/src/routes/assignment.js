@@ -130,7 +130,15 @@ router.post("/", checkAuthorization("ADMIN"), async (req, res) => {
 router.get("/", checkAuthorization("STUDENT"), async (req, res) => {
         try {
             const result = await pool.query(
-                `select distinct a.id, a.title, a.description, a.due_date, a.onedrive_url, a.target_type, a.created_at from assignments a
+                `select distinct a.id, a.title, a.description, a.due_date, a.onedrive_url, a.target_type, a.course_id, a.created_at,
+                    c.name as course_name,
+                    (select string_agg(distinct g.name, ', ' order by g.name)
+                     from assignment_groups assigned_ag
+                     join groups g on g.id = assigned_ag.group_id
+                     join group_members assigned_gm on assigned_gm.group_id = g.id
+                     where assigned_ag.assignment_id = a.id and assigned_gm.student_id = $1) as group_names
+                 from assignments a
+                 left join courses c on c.id = a.course_id
                  left join assignment_groups ag on a.id = ag.assignment_id
                       left join group_members gm on ag.group_id = gm.group_id
                  left join course_students cs on cs.course_id = a.course_id and cs.student_id = $1
@@ -195,6 +203,26 @@ router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
                 });
             }
 
+            let groupId = null;
+            if (assignmentResult.rows[0].target_type === 'GROUP') {
+                const leaderResult = await client.query(
+                    `select ag.group_id
+                     from assignment_groups ag
+                     join groups g on g.id = ag.group_id
+                     join group_members gm on gm.group_id = g.id and gm.student_id = $2
+                     where ag.assignment_id = $1 and g.leader_id = $2
+                     limit 1`,
+                    [assignmentId, studentId]
+                );
+
+                if (leaderResult.rows.length === 0) {
+                    return res.status(403).json({
+                        message: "Only the group leader can acknowledge this assignment"
+                    });
+                }
+                groupId = leaderResult.rows[0].group_id;
+            }
+
             const existingSubmission = await client.query(
                 `select id from submissions
                  where assignment_id = $1 and student_id = $2`,
@@ -208,15 +236,21 @@ router.post("/:id/submit",checkAuthorization("STUDENT"),async (req, res) => {
             }
 
             const result = await client.query(
-                `insert into submissions (assignment_id, student_id)
-                 values ($1, $2)
-                 returning id, assignment_id, student_id, confirmed_at`,
-                [assignmentId, studentId]
+                groupId
+                    ? `insert into submissions (assignment_id, student_id)
+                       select $1, student_id from group_members where group_id = $2
+                       on conflict (assignment_id, student_id) do nothing
+                       returning id, assignment_id, student_id, confirmed_at`
+                    : `insert into submissions (assignment_id, student_id)
+                       values ($1, $2)
+                       returning id, assignment_id, student_id, confirmed_at`,
+                groupId ? [assignmentId, groupId] : [assignmentId, studentId]
             );
 
             return res.status(201).json({
                 message: "Assignment submission confirmed",
-                submission: result.rows[0]
+                submission: result.rows[0],
+                shared: Boolean(groupId)
             });
 
         } catch (e) {
@@ -237,8 +271,28 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
             const studentId = req.user.id;
 
             const assignmentResult = await pool.query(
-                `select a.id, a.due_date, s.id as submission_id from assignments a
-                 left join submissions s on a.id = s.assignment_id and s.student_id = $2
+                `select a.id, a.due_date, a.target_type,
+                    exists (
+                        select 1 from submissions s
+                        where s.assignment_id = a.id and (
+                            (a.target_type <> 'GROUP' and s.student_id = $2)
+                            or (a.target_type = 'GROUP' and exists (
+                                select 1 from assignment_groups ag
+                                join group_members gm on gm.group_id = ag.group_id and gm.student_id = $2
+                                where ag.assignment_id = a.id
+                                  and exists (select 1 from group_members group_submission_member
+                                              where group_submission_member.group_id = ag.group_id
+                                                and group_submission_member.student_id = s.student_id)
+                            ))
+                        )
+                    ) as submitted,
+                    (a.target_type = 'GROUP' and exists (
+                        select 1 from assignment_groups ag
+                        join groups g on g.id = ag.group_id
+                        join group_members gm on gm.group_id = g.id and gm.student_id = $2
+                        where ag.assignment_id = a.id and g.leader_id = $2
+                    )) as can_submit
+                 from assignments a
                  where a.id = $1`,
                 [assignmentId, studentId]
             );
@@ -253,7 +307,7 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
 
             let status;
 
-            if (assignment.submission_id) {
+            if (assignment.submitted) {
                 status = "SUBMITTED";
             } else if (new Date(assignment.due_date) < new Date()) {
                 status = "OVERDUE";
@@ -263,7 +317,9 @@ router.get("/:id/status", checkAuthorization("STUDENT"), async (req, res) => {
 
             return res.status(200).json({
                 assignmentId: assignment.id,
-                status
+                status,
+                canSubmit: assignment.target_type === 'GROUP' ? assignment.can_submit : true,
+                shared: assignment.target_type === 'GROUP'
             });
 
         } catch (e) {

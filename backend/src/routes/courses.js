@@ -23,6 +23,82 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.get('/:id', checkAuthorization('ADMIN'), async (req, res) => {
+    try {
+        const courseResult = await pool.query(
+            `select id, name, created_by, created_at
+             from courses
+             where id = $1`,
+            [req.params.id]
+        );
+
+        if (courseResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        const [studentsResult, assignmentsResult] = await Promise.all([
+            pool.query(
+                `with enrolled_students as (
+                    select student_id from course_students where course_id = $1
+                    union
+                    select gm.student_id
+                    from course_groups cg
+                    join group_members gm on gm.group_id = cg.group_id
+                    where cg.course_id = $1
+                )
+                select u.id, u.name, u.email,
+                    count(a.id) filter (where a.id is not null) as assignment_count,
+                    count(s.id) as submitted_count
+                from enrolled_students es
+                join users u on u.id = es.student_id
+                left join assignments a on a.course_id = $1
+                left join submissions s on s.assignment_id = a.id and s.student_id = u.id
+                group by u.id, u.name, u.email
+                order by u.name`,
+                [req.params.id]
+            ),
+            pool.query(
+                `select a.id, a.title, a.due_date,
+                    count(distinct s.student_id) as submitted_count,
+                    (select count(*) from course_students cs where cs.course_id = a.course_id)
+                    + (select count(distinct gm.student_id)
+                       from course_groups cg
+                       join group_members gm on gm.group_id = cg.group_id
+                       where cg.course_id = a.course_id
+                         and not exists (select 1 from course_students cs2
+                                         where cs2.course_id = a.course_id and cs2.student_id = gm.student_id)) as student_count
+                from assignments a
+                left join submissions s on s.assignment_id = a.id
+                where a.course_id = $1
+                group by a.id, a.title, a.due_date, a.course_id
+                order by a.due_date`,
+                [req.params.id]
+            )
+        ]);
+
+        const assignments = assignmentsResult.rows.map((assignment) => ({
+            ...assignment,
+            student_count: Number(assignment.student_count),
+            submitted_count: Number(assignment.submitted_count),
+            pending_count: Number(assignment.student_count) - Number(assignment.submitted_count)
+        }));
+
+        return res.json({
+            course: courseResult.rows[0],
+            students: studentsResult.rows.map((student) => ({
+                ...student,
+                assignment_count: Number(student.assignment_count),
+                submitted_count: Number(student.submitted_count),
+                pending_count: Number(student.assignment_count) - Number(student.submitted_count)
+            })),
+            assignments
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: 'Failed to fetch course details' });
+    }
+});
+
 router.post('/', checkAuthorization('ADMIN'), async (req, res) => {
     const { name } = req.body;
     if (!name?.trim()) {

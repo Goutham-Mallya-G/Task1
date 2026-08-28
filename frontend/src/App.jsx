@@ -26,6 +26,7 @@ import AdminAssignments from './pages/admin/AdminAssignments'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminGroupDetails from './pages/admin/AdminGroupDetails'
 import AdminCourses from './pages/admin/AdminCourses'
+import AdminCourseDetails from './pages/admin/AdminCourseDetails'
 
 function RootRedirect() {
   const { user, loading } = useAuth()
@@ -70,6 +71,7 @@ function App() {
               <Route path="/admin/assignments" element={<AdminAssignments />} />
               <Route path="/admin/groups" element={<AdminGroups />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route path="/admin/courses/:id" element={<AdminCourseDetails />} />
               <Route path="/admin/groups/:id" element={<AdminGroupDetails />} />
               <Route path="/admin/assignments/create" element={<CreateAssignment />} />
               <Route path="/admin/assignments/:id/edit" element={<EditAssignment />} />

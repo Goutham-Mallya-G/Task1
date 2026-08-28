@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getGroups } from '../../api/groupApi'
 import { enrollCourse, enrollGroup } from '../../api/courseApi'
 import { getCourses } from '../../api/courseApi'
@@ -102,9 +103,14 @@ function Courses(){
               <p className="mt-3 text-sm text-slate-500">
                 Enrolled since {new Date(course.created_at).toLocaleDateString('en-IN')}
               </p>
-              <button className="mt-4 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={submitting || course.enrolled} onClick={() => handleEnroll(course.id)} type="button">
-                {course.enrolled ? 'Enrolled' : 'Enroll individually'}
-              </button>
+              <div className="mt-4 flex flex-row gap-3">
+                <Link className="inline-block rounded border border-blue-600 px-3 py-2 text-center text-sm font-medium text-blue-600 hover:bg-blue-50" to={`/student/assignments?courseId=${course.id}`}>
+                  See assignments
+                </Link>
+                <button className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60" disabled={submitting || course.enrolled} onClick={() => handleEnroll(course.id)} type="button">
+                  {course.enrolled ? 'Enrolled' : 'Enroll individually'}
+                </button>
+              </div>
             </article>
           ))}
         </div>

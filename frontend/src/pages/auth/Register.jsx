@@ -54,49 +54,74 @@ function Register(){
     }
   }
 
+  const updateField = (field, value) => {
+    setForm({ ...form, [field]: value })
+    setFieldErrors({ ...fieldErrors, [field]: undefined })
+    setError('')
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-5 rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-5 rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200" aria-busy={submitting}>
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Create your account</h1>
           <p className="mt-2 text-slate-600">Join your classmates in the assignment portal.</p>
         </div>
 
-        {error && <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
+        {error && <p className="flex items-start gap-2 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+          <span aria-hidden="true" className="font-bold">!</span>
+          <span>{error}</span>
+        </p>}
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-slate-700" htmlFor="register-name">
           Name
           <input
-            className="mt-1 w-full rounded border border-slate-300 p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            id="register-name"
+            className={`mt-1 w-full rounded border p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${fieldErrors.name ?
+               'border-red-400 bg-red-50/40' :
+               'border-slate-300'}`}
+            autoComplete="name"
             value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            onChange={(event) => updateField('name', event.target.value)}
             aria-invalid={Boolean(fieldErrors.name)}
+            aria-describedby={fieldErrors.name ? 'register-name-error' : undefined}
           />
-          {fieldErrors.name && <span className="mt-1 block text-sm text-red-600">{fieldErrors.name[0]}</span>}
+          {fieldErrors.name && <span id="register-name-error" className="mt-1 block text-sm text-red-600" role="alert">{fieldErrors.name[0]}</span>}
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-slate-700" htmlFor="register-email">
           Email
           <input
-            className="mt-1 w-full rounded border border-slate-300 p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            id="register-email"
+            className={`mt-1 w-full rounded border p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${fieldErrors.email ?
+               'border-red-400 bg-red-50/40' :
+               'border-slate-300'}`}
             type="email"
+            autoComplete="email"
             value={form.email}
-            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            onChange={(event) => updateField('email', event.target.value)}
             aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'register-email-error' : undefined}
           />
-          {fieldErrors.email && <span className="mt-1 block text-sm text-red-600">{fieldErrors.email[0]}</span>}
+          {fieldErrors.email && <span id="register-email-error" className="mt-1 block text-sm text-red-600" role="alert">{fieldErrors.email[0]}</span>}
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-slate-700" htmlFor="register-password">
           Password
           <input
-            className="mt-1 w-full rounded border border-slate-300 p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            id="register-password"
+            className={`mt-1 w-full rounded border p-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${fieldErrors.password ? 'border-red-400 bg-red-50/40' : 'border-slate-300'}`}
             type="password"
+            autoComplete="new-password"
             value={form.password}
-            onChange={(event) => setForm({ ...form, password: event.target.value })}
+            onChange={(event) => updateField('password', event.target.value)}
             aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? 'register-password-error' : undefined}
           />
-          {fieldErrors.password && <span className="mt-1 block text-sm text-red-600">{fieldErrors.password[0]}</span>}
+          {fieldErrors.password && 
+              <span id="register-password-error" className="mt-1 block text-sm text-red-600" role="alert">
+                {fieldErrors.password[0]}
+              </span>}
         </label>
 
         <button
@@ -104,7 +129,8 @@ function Register(){
           disabled={submitting}
           type="submit"
         >
-          {submitting && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" aria-label="Creating account" />}
+          {submitting && 
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" aria-hidden="true" />}
           {submitting ? 'Creating account...' : 'Register'}
         </button>
 

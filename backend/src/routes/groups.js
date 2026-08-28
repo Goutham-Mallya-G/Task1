@@ -103,7 +103,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
 
         if(!email || !email.trim()){
             return res.status(400).json({
-                message : "Studnet email is required"
+                message : "Student email is required"
             })
         }
 
@@ -125,7 +125,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
         //check is group creator adding student
         if(Number(group.leader_id) !== Number(req.user.id)){
             return res.status(403).json({
-                message : "Only group creator can add studnet in groups"
+                message : "Only group creator can add student in groups"
             })
         }
 
@@ -170,7 +170,7 @@ router.post("/:id/add" , checkAuthorization("STUDENT"), async(req,res)=>{
         )
 
         return res.status(201).json({
-            message : "Studnet added to the group",
+            message : "Student added to the group",
             student : {
                 id : user.id,
                 name : user.name,

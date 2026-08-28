@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+@keyframes submission-check-in {
+	from { opacity: 0; transform: scale(0.7); }
+	to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes submission-status-pulse {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.04); }
+}
+
+.submission-check {
+	display: inline-flex;
+	width: 1.25rem;
+	height: 1.25rem;
+	align-items: center;
+	justify-content: center;
+	border-radius: 9999px;
+	background: #059669;
+	color: white;
+	font-size: 0.8rem;
+	animation: submission-check-in 180ms ease-out;
+}
+
+.submission-status-pulse {
+	animation: submission-status-pulse 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.submission-check,
+	.submission-status-pulse {
+		animation: none;
+	}
+}

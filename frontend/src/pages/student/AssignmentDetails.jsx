@@ -9,12 +9,15 @@ function AssignmentDetails(){
   const {id} = useParams(); 
   const location = useLocation();
   const [assignment, setAssignment] = useState(location.state?.assignment || null)
-  const [status, setStatus] = useState(location.state?.assignment?.status || '')
+    const [status, setStatus] = useState(location.state?.assignment?.status || '')
+    const [canSubmit, setCanSubmit] = useState(location.state?.assignment?.canSubmit ?? true)
+    const [shared, setShared] = useState(location.state?.assignment?.shared || false)
   const [loading, setLoading] = useState(!assignment); 
   const [error, setError] = useState(''); 
   const [confirming, setConfirming] = useState(false); 
   const [submitting, setSubmitting] = useState(false); 
   const [feedback, setFeedback] = useState('')
+    const [justSubmitted, setJustSubmitted] = useState(false)
 
   const loadAssignment = useCallback(async () => {
     setLoading(true);
@@ -24,7 +27,9 @@ function AssignmentDetails(){
          if (!found) { setError('Assignment not found.');
          return } setAssignment(found);
          const statusResponse = await getAssignmentStatus(id);
-         setStatus(statusResponse.data.status) 
+         setStatus(statusResponse.data.status)
+         setCanSubmit(statusResponse.data.canSubmit)
+         setShared(statusResponse.data.shared)
         }catch{ 
             setError('We could not load this assignment.') 
         }finally{setLoading(false)}
@@ -40,6 +45,7 @@ function AssignmentDetails(){
     try{await submitAssignment(id);
         setStatus('SUBMITTED');
         setFeedback('Your submission has been confirmed.');
+        setJustSubmitted(true)
         setConfirming(false) 
     }catch(requestError){
         setError(requestError.response?.data?.message || 'We could not confirm the submission.')
@@ -62,8 +68,11 @@ function AssignmentDetails(){
             <div>
                 <h1 className="text-2xl font-bold">{assignment.title}</h1>
                 <p className="mt-2 text-slate-600">Due {formatDate(assignment.due_date)}</p>
+                {shared && <p className="mt-2 text-sm text-blue-700">One acknowledgement applies to every member of your group.</p>}
             </div>
-            <AssignmentStatusBadge status={status} />
+            <div className={justSubmitted ? 'submission-status-pulse' : ''}>
+                <AssignmentStatusBadge status={status} />
+            </div>
         </div>
         {
             assignment.description && 
@@ -85,8 +94,9 @@ function AssignmentDetails(){
         </div>
         {
             feedback && 
-            <p className="mt-5 rounded bg-emerald-50 p-3 text-emerald-700" role="status">
-                {feedback}
+            <p className="mt-5 flex items-center gap-2 rounded bg-emerald-50 p-3 text-emerald-700" role="status">
+                <span className="submission-check" aria-hidden="true">&#10003;</span>
+                <span>{feedback}</span>
             </p>
         }{
             error && assignment && 
@@ -94,13 +104,16 @@ function AssignmentDetails(){
                 {error}
             </p>
         }{
-            status !== 'SUBMITTED' && 
+            status !== 'SUBMITTED' && canSubmit &&
             <button className="mt-6 rounded bg-blue-600 px-4 py-2 font-medium text-white disabled:opacity-60" disabled={submitting} onClick={() => setConfirming(true)} type="button">
                 Yes, I have submitted
             </button>
         }
         </div>
         {
+            status !== 'SUBMITTED' && !canSubmit && shared &&
+            <p className="mt-6 rounded bg-slate-100 p-3 text-slate-700">Only your group leader can acknowledge this assignment.</p>
+        }{
             confirming && 
             <div className="fixed inset-0 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
                 <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
